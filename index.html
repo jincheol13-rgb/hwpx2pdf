@@ -15,6 +15,8 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- JSZip -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- html2canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- html2pdf.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <!-- Mammoth.js for docx parsing -->
@@ -120,6 +122,13 @@
                                 <span class="btn-subtitle">즉시 이미지 PDF 변환</span>
                             </div>
                         </button>
+                        <button class="btn btn-secondary" id="exportJpgBtn" disabled>
+                            <i data-lucide="image"></i>
+                            <div class="btn-text-wrapper">
+                                <span class="btn-title">이미지 파일 다운로드</span>
+                                <span class="btn-subtitle">JPG 이미지 압축 파일(ZIP) 저장</span>
+                            </div>
+                        </button>
                     </div>
                     <div class="alert-info">
                         <i data-lucide="info" class="alert-icon"></i>
@@ -127,54 +136,9 @@
                     </div>
                 </div>
 
-                <!-- Document Summary Card -->
-                <div class="card summary-card" id="summaryCard" style="display: none;">
-                    <h2><i data-lucide="sparkles" class="title-icon"></i>문서 요약 및 통계</h2>
-                    <div class="summary-stats">
-                        <div class="stat-item">
-                            <span class="stat-val" id="wordCount">0</span>
-                            <span class="stat-label">단어 수</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-val" id="charCount">0</span>
-                            <span class="stat-label">글자 수</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-val" id="readingTime">0분</span>
-                            <span class="stat-label">읽기 시간</span>
-                        </div>
-                    </div>
-                    
-                    <div class="summary-content">
-                        <h3>주요 키워드</h3>
-                        <div class="keyword-tags" id="keywordTags">
-                            <!-- Tags go here -->
-                        </div>
-                        
-                        <h3>핵심 요약</h3>
-                        <blockquote class="summary-text" id="summaryText">
-                            요약 생성 중...
-                        </blockquote>
-                        <button class="btn btn-secondary btn-sm" id="copySummaryBtn">
-                            <i data-lucide="copy"></i> 요약 복사하기
-                        </button>
-                    </div>
-                </div>
 
-                <!-- Theme Settings Card -->
-                <div class="card theme-card">
-                    <h2><i data-lucide="palette" class="title-icon"></i>화면 테마 설정</h2>
-                    <div class="theme-options">
-                        <label class="theme-option">
-                            <input type="radio" name="appTheme" value="dark" checked>
-                            <span class="theme-label"><i data-lucide="moon"></i>다크 모드</span>
-                        </label>
-                        <label class="theme-option">
-                            <input type="radio" name="appTheme" value="light">
-                            <span class="theme-label"><i data-lucide="sun"></i>라이트 모드</span>
-                        </label>
-                    </div>
-                </div>
+
+
             </section>
 
             <!-- Right Panel: Live Interactive Preview Container -->

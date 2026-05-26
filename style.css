@@ -30,23 +30,7 @@
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Light Theme Variables */
-[data-theme="light"] {
-    --bg-color: #f3f4f6;
-    --card-bg: rgba(255, 255, 255, 0.8);
-    --card-border: rgba(0, 0, 0, 0.08);
-    --text-primary: #111827;
-    --text-secondary: #4b5563;
-    --text-muted: #9ca3af;
-    
-    --accent-gradient: linear-gradient(135deg, #7c3aed, #4f46e5);
-    --accent-glow: rgba(124, 58, 237, 0.2);
-    --accent-color: #6d28d9;
-    --accent-hover: #5b21b6;
-    
-    --shadow-md: 0 8px 30px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 15px 45px rgba(0, 0, 0, 0.1);
-}
+
 
 /* ==========================================================================
    Reset & Base Styles
@@ -213,85 +197,6 @@ body {
 .theme-option:hover input[type="radio"]:not(:checked) + .theme-label {
     background-color: rgba(255, 255, 255, 0.05);
     color: var(--text-primary);
-}
-
-/* Document Summary and Statistics */
-.summary-card {
-    animation: slideIn 0.3s ease;
-}
-.summary-stats {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 8px;
-    margin-bottom: 20px;
-    background-color: rgba(0, 0, 0, 0.15);
-    border: 1px solid var(--card-border);
-    padding: 12px 8px;
-    border-radius: 12px;
-    text-align: center;
-}
-.stat-item {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-.stat-item:not(:last-child) {
-    border-right: 1px solid var(--card-border);
-}
-.stat-val {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--accent-color);
-    font-family: var(--font-heading);
-}
-.stat-label {
-    font-size: 11px;
-    color: var(--text-muted);
-}
-.summary-content h3 {
-    font-size: 13px;
-    font-weight: 600;
-    margin-bottom: 8px;
-    color: var(--text-secondary);
-}
-.keyword-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 16px;
-}
-.keyword-tag {
-    font-size: 11px;
-    font-weight: 500;
-    padding: 4px 8px;
-    border-radius: 6px;
-    background-color: rgba(139, 92, 246, 0.08);
-    border: 1px solid rgba(139, 92, 246, 0.15);
-    color: var(--accent-color);
-}
-.summary-text {
-    font-size: 12.5px;
-    line-height: 1.6;
-    color: var(--text-secondary);
-    background-color: rgba(255, 255, 255, 0.02);
-    border-left: 3px solid var(--accent-color);
-    padding: 10px 14px;
-    border-radius: 4px;
-    margin-bottom: 16px;
-    font-style: italic;
-}
-.btn-sm {
-    padding: 6px 12px !important;
-    border-radius: 6px !important;
-    font-size: 11px !important;
-    width: auto !important;
-    display: inline-flex !important;
-    align-items: center;
-    gap: 6px;
-}
-.btn-sm i {
-    width: 14px !important;
-    height: 14px !important;
 }
 
 /* Main Grid Layout */
@@ -632,11 +537,6 @@ body {
     box-shadow: none !important;
 }
 
-.btn-success {
-    background: var(--success-bg) !important;
-    border-color: var(--success) !important;
-    color: var(--success) !important;
-}
 
 .alert-info {
     display: flex;
@@ -894,23 +794,12 @@ body {
     transform-origin: center center;
 }
 
-/* Page Rotations */
-.paper-page.rotate-0 {
-    transform: rotate(0deg);
-}
-.paper-page.rotate-90 {
-    transform: rotate(90deg);
+/* Page Orientation Layouts (Portrait by default) */
+.paper-page.layout-landscape {
     width: 297mm !important;
     min-height: 210mm !important;
 }
-.paper-page.rotate-180 {
-    transform: rotate(180deg);
-}
-.paper-page.rotate-270 {
-    transform: rotate(270deg);
-    width: 297mm !important;
-    min-height: 210mm !important;
-}
+
 
 /* Document specific element layout styles within paper */
 .paper-page p {
@@ -1082,10 +971,6 @@ body {
         transform: none !important; /* Reset visual transforms to let natural layout split */
     }
 
-    .paper-page.rotate-90, .paper-page.rotate-270 {
-        width: 297mm !important;
-        min-height: 210mm !important;
-    }
 
     .paper-page:last-child {
         page-break-after: avoid !important;

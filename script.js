@@ -27,6 +27,7 @@ const progressStatus = document.getElementById('progressStatus');
 const actionsCard = document.getElementById('actionsCard');
 const exportPrintBtn = document.getElementById('exportPrintBtn');
 const exportDownloadBtn = document.getElementById('exportDownloadBtn');
+const exportJpgBtn = document.getElementById('exportJpgBtn');
 const canvasPlaceholder = document.getElementById('canvasPlaceholder');
 const previewCanvas = document.getElementById('previewCanvas');
 const zoomInBtn = document.getElementById('zoomInBtn');
@@ -38,38 +39,10 @@ const prevMatchBtn = document.getElementById('prevMatchBtn');
 const nextMatchBtn = document.getElementById('nextMatchBtn');
 const rotatePageBtn = document.getElementById('rotatePageBtn');
 
-// Document Summary DOM Elements
-const summaryCard = document.getElementById('summaryCard');
-const wordCountEl = document.getElementById('wordCount');
-const charCountEl = document.getElementById('charCount');
-const readingTimeEl = document.getElementById('readingTime');
-const keywordTagsEl = document.getElementById('keywordTags');
-const summaryTextEl = document.getElementById('summaryText');
-const copySummaryBtn = document.getElementById('copySummaryBtn');
-
 /* ==========================================================================
-   Theme & Preferences Toggle
+   Theme Settings - Locked to Dark Mode
    ========================================================================== */
-function initTheme() {
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    document.body.setAttribute('data-theme', savedTheme);
-    
-    // Set correct radio button checked state
-    const targetRadio = document.querySelector(`input[name="appTheme"][value="${savedTheme}"]`);
-    if (targetRadio) {
-        targetRadio.checked = true;
-    }
-}
-
-document.querySelectorAll('input[name="appTheme"]').forEach(radio => {
-    radio.addEventListener('change', () => {
-        const selectedTheme = radio.value;
-        document.body.setAttribute('data-theme', selectedTheme);
-        localStorage.setItem('theme', selectedTheme);
-    });
-});
-
-initTheme();
+document.body.setAttribute('data-theme', 'dark');
 
 /* ==========================================================================
    File Drag & Drop Listeners
@@ -123,6 +96,7 @@ function resetState() {
     actionsCard.classList.add('disabled');
     exportPrintBtn.disabled = true;
     exportDownloadBtn.disabled = true;
+    exportJpgBtn.disabled = true;
     
     zoomInBtn.disabled = true;
     zoomOutBtn.disabled = true;
@@ -138,14 +112,6 @@ function resetState() {
     searchCounter.textContent = "0/0";
     searchMatches = [];
     currentMatchIndex = -1;
-    
-    // Reset Summary Card
-    if (summaryCard) summaryCard.style.display = 'none';
-    if (wordCountEl) wordCountEl.textContent = '0';
-    if (charCountEl) charCountEl.textContent = '0';
-    if (readingTimeEl) readingTimeEl.textContent = '0분';
-    if (keywordTagsEl) keywordTagsEl.innerHTML = '';
-    if (summaryTextEl) summaryTextEl.textContent = '요약 생성 중...';
     
     updateProgress(0, "");
 }
@@ -183,11 +149,13 @@ async function handleFile(file) {
         }
         
         applyPageRotation();
+        updateProgress(100, "변환 완료!");
         
         // Enable Controls
         actionsCard.classList.remove('disabled');
         exportPrintBtn.disabled = false;
         exportDownloadBtn.disabled = false;
+        exportJpgBtn.disabled = false;
         zoomInBtn.disabled = false;
         zoomOutBtn.disabled = false;
         docSearchInput.disabled = false;
@@ -195,11 +163,6 @@ async function handleFile(file) {
         
         canvasPlaceholder.style.display = 'none';
         previewCanvas.style.display = 'flex';
-        
-        // Generate summary and stats from the visible text content
-        generateSummaryAndStats();
-        
-        updateProgress(100, "변환 완료!");
         
     } catch (err) {
         console.error(err);
@@ -761,7 +724,11 @@ exportPrintBtn.addEventListener('click', () => {
     // Copy rendered pages into print container
     const pages = previewCanvas.querySelectorAll('.paper-page');
     pages.forEach(page => {
-        printContainer.appendChild(page.cloneNode(true));
+        const clonedPage = page.cloneNode(true);
+        // Clear screen rotation transform and layout classes for clean portrait printing
+        clonedPage.style.transform = 'none';
+        clonedPage.classList.remove('layout-landscape');
+        printContainer.appendChild(clonedPage);
     });
     
     // Set system printing title to the uploaded file name
@@ -769,21 +736,12 @@ exportPrintBtn.addEventListener('click', () => {
     const cleanName = uploadedFileName.replace(/\.(hwpx|docx)$/i, '');
     document.title = cleanName;
     
-    // Inject dynamic print media size based on page rotation
-    const isLandscape = pageRotation === 90 || pageRotation === 270;
-    const printStyle = document.createElement('style');
-    printStyle.id = 'print-rotation-override';
-    printStyle.innerHTML = `@media print { @page { size: A4 ${isLandscape ? 'landscape' : 'portrait'}; } }`;
-    document.head.appendChild(printStyle);
-    
     window.print();
     
     // Restore Title & Clean up
     document.title = originalTitle;
     setTimeout(() => {
         printContainer.innerHTML = '';
-        const styleOverride = document.getElementById('print-rotation-override');
-        if (styleOverride) styleOverride.remove();
     }, 1000);
 });
 
@@ -791,14 +749,13 @@ exportPrintBtn.addEventListener('click', () => {
 exportDownloadBtn.addEventListener('click', () => {
     const qualityMode = document.querySelector('input[name="pdfQuality"]:checked').value;
     const isLow = qualityMode === 'low';
-    const isLandscape = pageRotation === 90 || pageRotation === 270;
     
     const opt = {
         margin: 0,
         filename: uploadedFileName.replace(/\.(hwpx|docx)$/i, '.pdf'),
         image: { type: 'jpeg', quality: isLow ? 0.7 : 0.98 },
         html2canvas: { scale: isLow ? 1.1 : 1.6, useCORS: true, logging: false },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: isLandscape ? 'landscape' : 'portrait' },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, // Always portrait PDF
         pagebreak: { mode: ['css', 'legacy'] }
     };
     
@@ -807,12 +764,169 @@ exportDownloadBtn.addEventListener('click', () => {
     zoomPercent = 100;
     applyZoom();
     
+    // Temporarily save orientations and transforms, then clear them
+    const pages = previewCanvas.querySelectorAll('.paper-page');
+    const originalStyles = [];
+    pages.forEach(page => {
+        originalStyles.push({
+            element: page,
+            transform: page.style.transform,
+            className: page.className
+        });
+        // Physically remove class and inline transform so html2canvas renders as a clean portrait A4 sheet
+        page.style.transform = 'none';
+        page.classList.remove('layout-landscape');
+    });
+    
     // Export
     html2pdf().from(previewCanvas).set(opt).save().then(() => {
-        // Restore zoom
+        // Restore styles and zoom
+        originalStyles.forEach(item => {
+            item.element.style.transform = item.transform;
+            item.element.className = item.className;
+        });
+        zoomPercent = currentZoom;
+        applyZoom();
+    }).catch(err => {
+        console.error("PDF download failed", err);
+        // Restore styles and zoom on error
+        originalStyles.forEach(item => {
+            item.element.style.transform = item.transform;
+            item.element.className = item.className;
+        });
         zoomPercent = currentZoom;
         applyZoom();
     });
+});
+
+// Method 3: Direct JPG Download (ZIP for multi-pages, direct JPG for single page)
+exportJpgBtn.addEventListener('click', async () => {
+    updateProgress(10, "이미지 파일 생성 준비 중...");
+    
+    // Save zoom state and set to 100%
+    const currentZoom = zoomPercent;
+    zoomPercent = 100;
+    applyZoom();
+    
+    // Temporarily save orientations and transforms, then clear them
+    const pages = previewCanvas.querySelectorAll('.paper-page');
+    const originalStyles = [];
+    pages.forEach(page => {
+        originalStyles.push({
+            element: page,
+            transform: page.style.transform,
+            className: page.className
+        });
+        // Physically remove class and transform so html2canvas renders as portrait A4 sheet
+        page.style.transform = 'none';
+        page.classList.remove('layout-landscape');
+    });
+    
+    try {
+        if (pages.length === 0) {
+            throw new Error("변환할 페이지가 없습니다.");
+        }
+        
+        const cleanName = uploadedFileName.replace(/\.(hwpx|docx)$/i, '');
+        
+        // Define html2pdf options to be used for the internal canvas rendering
+        const opt = {
+            margin: 0,
+            image: { type: 'jpeg', quality: 0.95 },
+            html2canvas: { scale: 2.0, useCORS: true, logging: false },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        
+        if (pages.length === 1) {
+            updateProgress(30, "페이지 이미지 렌더링 중...");
+            
+            let canvas = null;
+            if (window.html2canvas) {
+                canvas = await window.html2canvas(pages[0], {
+                    scale: 2.0, // High-quality 2x scale
+                    useCORS: true,
+                    logging: false,
+                    backgroundColor: '#ffffff'
+                });
+            } else {
+                await html2pdf().from(pages[0]).set(opt).toCanvas().then(function() {
+                    canvas = this.prop.canvas;
+                });
+            }
+            
+            if (!canvas) {
+                throw new Error("캔버스 생성에 실패했습니다.");
+            }
+            
+            updateProgress(80, "이미지 다운로드 준비 중...");
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            
+            const link = document.createElement('a');
+            link.href = imgData;
+            link.download = `${cleanName}.jpg`;
+            link.click();
+            
+            updateProgress(100, "다운로드 완료!");
+        } else {
+            const zip = new JSZip();
+            
+            for (let i = 0; i < pages.length; i++) {
+                const pageNum = i + 1;
+                updateProgress(
+                    Math.round(20 + (i / pages.length) * 60), 
+                    `이미지 생성 중 (페이지 ${pageNum}/${pages.length})...`
+                );
+                
+                let canvas = null;
+                if (window.html2canvas) {
+                    canvas = await window.html2canvas(pages[i], {
+                        scale: 2.0,
+                        useCORS: true,
+                        logging: false,
+                        backgroundColor: '#ffffff'
+                    });
+                } else {
+                    await html2pdf().from(pages[i]).set(opt).toCanvas().then(function() {
+                        canvas = this.prop.canvas;
+                    });
+                }
+                
+                if (!canvas) {
+                    throw new Error(`페이지 ${pageNum} 캔버스 생성에 실패했습니다.`);
+                }
+                
+                const imgData = canvas.toDataURL('image/jpeg', 0.92);
+                const base64Data = imgData.split(',')[1];
+                zip.file(`${cleanName}_page_${pageNum}.jpg`, base64Data, { base64: true });
+            }
+            
+            updateProgress(85, "ZIP 압축 파일 생성 중...");
+            const zipContent = await zip.generateAsync({ type: "blob" });
+            
+            updateProgress(95, "압축 파일 다운로드 중...");
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(zipContent);
+            link.download = `${cleanName}_images.zip`;
+            link.click();
+            
+            // Cleanup object URL
+            setTimeout(() => URL.revokeObjectURL(link.href), 100);
+            
+            updateProgress(100, "다운로드 완료!");
+        }
+    } catch (err) {
+        console.error("JPG export failed", err);
+        alert("이미지 변환 중 오류가 발생했습니다: " + err.message);
+        updateProgress(100, "오류 발생");
+    } finally {
+        // Restore styles and zoom
+        originalStyles.forEach(item => {
+            item.element.style.transform = item.transform;
+            item.element.className = item.className;
+        });
+        zoomPercent = currentZoom;
+        applyZoom();
+    }
 });
 
 /* ==========================================================================
@@ -1002,17 +1116,25 @@ function updateSearchCounter(current, total) {
    Page Rotation Logic
    ========================================================================== */
 rotatePageBtn.addEventListener('click', () => {
-    pageRotation = (pageRotation + 90) % 360;
+    pageRotation += 90;
     applyPageRotation();
 });
 
 function applyPageRotation() {
     const pages = previewCanvas.querySelectorAll('.paper-page');
+    const normalizedRotation = Math.abs(pageRotation) % 360;
+    const isLandscape = normalizedRotation === 90 || normalizedRotation === 270;
+    
     pages.forEach(page => {
-        // Clear all rotate classes
-        page.classList.remove('rotate-0', 'rotate-90', 'rotate-180', 'rotate-270');
-        // Apply selected rotation class
-        page.classList.add(`rotate-${pageRotation}`);
+        // Apply landscape layout dimensions if applicable
+        if (isLandscape) {
+            page.classList.add('layout-landscape');
+        } else {
+            page.classList.remove('layout-landscape');
+        }
+        
+        // Inline styles guarantee smooth continuous clockwise rotation transitions
+        page.style.transform = `rotate(${pageRotation}deg)`;
     });
 }
 
@@ -1067,214 +1189,3 @@ function compressImage(base64Str, mimeType, quality = 0.6, maxDim = 900) {
     });
 }
 
-/* ==========================================================================
-   Client-Side Document Summarization & Stats Heuristics
-   ========================================================================== */
-
-function extractTextFromPreview() {
-    const pages = previewCanvas.querySelectorAll('.paper-page');
-    let text = '';
-    pages.forEach(page => {
-        text += page.innerText + '\n';
-    });
-    return text.trim();
-}
-
-function splitIntoSentences(text) {
-    // Splits by period/exclamation/question mark followed by space or end of line,
-    // and also handles newlines. Matches whole sentences preserving ending punctuation.
-    const matches = text.match(/[^.!?\n]+(?:[.!?]+|\n+|$)/g);
-    if (!matches) return [];
-    return matches
-        .map(s => s.trim().replace(/\s+/g, ' '))
-        .filter(s => s.length > 10);
-}
-
-function extractKeywords(text, count = 5) {
-    const stopWords = new Set([
-        '이', '그', '저', '것', '수', '등', '및', '을', '를', '은', '는', '이', '가', 
-        '에', '에서', '로', '으로', '고', '하고', '하며', '또한', '위해', '대한', 
-        '통해', '모든', '있는', '있다', '한다', '하다', '의', '와', '과', '도', '으로',
-        '다', '더', '한', '적', '할', '합니다', '있습니다', '하는', '에서', '에게',
-        '임', '않고', '따라', '경우', '때문', '정도', '대한', '관한', '대해', '위한',
-        'the', 'a', 'an', 'and', 'or', 'but', 'is', 'are', 'was', 'were', 'to', 
-        'of', 'in', 'for', 'on', 'with', 'at', 'by', 'this', 'that', 'it', 'from', 
-        'as', 'to', 'be', 'an', 'your', 'our', 'my', 'their', 'his', 'her', 'its', 
-        'we', 'you', 'he', 'she', 'they', 'i', 'me', 'us', 'them', 'who', 'which',
-        'what', 'how', 'why', 'where', 'when', 'if', 'then', 'else', 'not', 'no',
-        'yes', 'will', 'would', 'can', 'could', 'should', 'may', 'might', 'must',
-        'about', 'more', 'some', 'any', 'other', 'new', 'old', 'good', 'bad'
-    ]);
-
-    const wordRegex = /[a-zA-Z0-9가-힣]+/g;
-    const matches = text.match(wordRegex);
-    if (!matches) return [];
-
-    const wordFreq = {};
-    matches.forEach(w => {
-        let word = w.toLowerCase();
-        
-        // Simple heuristic for Korean: strip trailing particles if word is reasonably long
-        if (word.length > 2) {
-            const particles = ['은', '는', '이', '가', '을', '를', '의', '에', '와', '과', '로', '고', '도'];
-            for (const particle of particles) {
-                if (word.endsWith(particle)) {
-                    word = word.slice(0, -particle.length);
-                    break;
-                }
-            }
-        }
-        
-        if (word.length < 2) return;
-        if (stopWords.has(word)) return;
-        
-        wordFreq[word] = (wordFreq[word] || 0) + 1;
-    });
-
-    const sortedWords = Object.keys(wordFreq)
-        .map(word => ({ word, count: wordFreq[word] }))
-        .sort((a, b) => b.count - a.count);
-
-    return sortedWords.slice(0, count).map(x => x.word);
-}
-
-function summarizeText(text, sentences, keywords, summaryCount = 3) {
-    if (sentences.length <= summaryCount) {
-        return sentences;
-    }
-
-    const keywordSet = new Set(keywords);
-    const sentenceScores = sentences.map((sentence, index) => {
-        const words = sentence.match(/[a-zA-Z0-9가-힣]+/g) || [];
-        let score = 0;
-        
-        words.forEach(w => {
-            let word = w.toLowerCase();
-            if (word.length > 2) {
-                const particles = ['은', '는', '이', '가', '을', '를', '의', '에', '와', '과', '로', '고', '도'];
-                for (const particle of particles) {
-                    if (word.endsWith(particle)) {
-                        word = word.slice(0, -particle.length);
-                        break;
-                    }
-                }
-            }
-            if (keywordSet.has(word)) {
-                score += 1;
-            }
-        });
-
-        // Length normalization to balance short/long sentences
-        const wordCount = words.length;
-        const normalizedScore = wordCount > 0 ? score / Math.log(2 + wordCount) : 0;
-
-        return { sentence, index, score: normalizedScore };
-    });
-
-    const topSentences = sentenceScores
-        .sort((a, b) => b.score - a.score)
-        .slice(0, summaryCount);
-
-    // Keep chronological order of sentences
-    topSentences.sort((a, b) => a.index - b.index);
-
-    return topSentences.map(x => x.sentence);
-}
-
-function generateSummaryAndStats() {
-    const text = extractTextFromPreview();
-    if (!text || text.length < 20) {
-        if (summaryCard) summaryCard.style.display = 'none';
-        return;
-    }
-
-    // 1. Word and Char count
-    const words = text.trim().split(/\s+/).filter(w => w.length > 0);
-    const wordCount = words.length;
-    const charCount = text.length;
-
-    // 2. Reading time calculation
-    const hasKorean = /[\uac00-\ud7a3]/.test(text);
-    let readingTime = 1;
-    if (hasKorean) {
-        readingTime = Math.max(1, Math.ceil(charCount / 500));
-    } else {
-        readingTime = Math.max(1, Math.ceil(wordCount / 200));
-    }
-
-    if (wordCountEl) wordCountEl.textContent = wordCount.toLocaleString();
-    if (charCountEl) charCountEl.textContent = charCount.toLocaleString();
-    if (readingTimeEl) readingTimeEl.textContent = `${readingTime}분`;
-
-    // 3. Keywords
-    const keywords = extractKeywords(text, 5);
-    if (keywordTagsEl) {
-        keywordTagsEl.innerHTML = '';
-        keywords.forEach(keyword => {
-            const tag = document.createElement('span');
-            tag.className = 'keyword-tag';
-            tag.textContent = keyword;
-            keywordTagsEl.appendChild(tag);
-        });
-    }
-
-    // 4. Summarization
-    const sentences = splitIntoSentences(text);
-    const summarySentences = summarizeText(text, sentences, keywords, 3);
-
-    if (summaryTextEl) {
-        if (summarySentences.length > 0) {
-            summaryTextEl.innerHTML = summarySentences.map(s => `&bull; ${s}`).join('<br><br>');
-        } else {
-            summaryTextEl.textContent = "본문 텍스트가 너무 짧아 요약을 생성할 수 없습니다.";
-        }
-    }
-
-    if (summaryCard) {
-        summaryCard.style.display = 'block';
-    }
-}
-
-// Clipboard copy click listener
-if (copySummaryBtn) {
-    copySummaryBtn.addEventListener('click', () => {
-        if (!keywordTagsEl || !summaryTextEl || !wordCountEl || !charCountEl || !readingTimeEl) return;
-        
-        const keywordsText = Array.from(keywordTagsEl.querySelectorAll('.keyword-tag'))
-            .map(el => el.textContent)
-            .join(', ');
-
-        const summaryLines = Array.from(summaryTextEl.childNodes)
-            .map(node => node.textContent || '')
-            .filter(t => t.trim().length > 0)
-            .map(t => t.replace(/^[•\s\u2022]+/, '').trim())
-            .join('\n');
-
-        const textToCopy = `[문서 통계]
-- 단어 수: ${wordCountEl.textContent}
-- 글자 수: ${charCountEl.textContent}
-- 읽기 시간: ${readingTimeEl.textContent}
-
-[주요 키워드]
-${keywordsText || '없음'}
-
-[핵심 요약]
-${summaryLines || '없음'}`;
-
-        navigator.clipboard.writeText(textToCopy).then(() => {
-            const originalHTML = copySummaryBtn.innerHTML;
-            copySummaryBtn.innerHTML = '<i data-lucide="check"></i> 복사 완료!';
-            if (window.lucide) window.lucide.createIcons();
-            copySummaryBtn.classList.add('btn-success');
-
-            setTimeout(() => {
-                copySummaryBtn.innerHTML = originalHTML;
-                if (window.lucide) window.lucide.createIcons();
-                copySummaryBtn.classList.remove('btn-success');
-            }, 2000);
-        }).catch(err => {
-            console.error('Failed to copy text: ', err);
-            alert('클립보드 복사에 실패했습니다.');
-        });
-    });
-}

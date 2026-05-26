@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convert OWPML HWPX to PDF | Client-side Secure Converter</title>
+    <meta name="description" content="설치나 서버 업로드 없이 브라우저에서 100% 로컬로 실행되는 안전한 HWPX-PDF 변환기. 개인 정보 유출 걱정 없이 고품질 PDF로 변환하세요.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- JSZip -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- html2pdf.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Mammoth.js for docx parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.11.0/mammoth.browser.min.js"></script>
+</head>
+<body>
+    <!-- Background Glow Blobs -->
+    <div class="glow-blob glow-1"></div>
+    <div class="glow-blob glow-2"></div>
+    <div class="glow-blob glow-3"></div>
+
+    <div class="app-container" id="appContainer">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <i data-lucide="file-text"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>HWPX<span>2</span>PDF</h1>
+                    <p>Secure Local Converter</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <!-- Theme toggle button removed in favor of settings card -->
+            </div>
+        </header>
+
+        <!-- Main Body -->
+        <main class="app-main">
+            <!-- Left Panel: Uploader & Control Panel -->
+            <section class="control-panel">
+                <!-- Info Section -->
+                <div class="card info-card">
+                    <h2><i data-lucide="shield-check" class="title-icon"></i>100% 로컬 보안 변환</h2>
+                    <p>업로드한 파일은 서버로 전송되지 않고 오직 <strong>사용자의 브라우저에서만</strong> 변환됩니다. 외부로의 데이터 유출 걱정 없이 안심하고 사용하세요.</p>
+                </div>
+
+                <!-- Dropzone Area -->
+                <div class="card dropzone-card">
+                    <div class="dropzone" id="dropzone">
+                        <input type="file" id="fileInput" accept=".hwpx,.docx" style="display: none;">
+                        <div class="dropzone-content">
+                            <div class="upload-icon-wrapper">
+                                <i data-lucide="upload-cloud" class="upload-icon"></i>
+                            </div>
+                            <h3>파일 업로드</h3>
+                            <p class="dropzone-hint">이곳에 HWPX 또는 DOCX 파일을 드래그 앤 드롭하거나 클릭하여 선택하세요.</p>
+                            <span class="file-format-badge">HWPX / DOCX 지원</span>
+                        </div>
+                    </div>
+                    
+                    <!-- File Progress/Info -->
+                    <div class="file-status-area" id="fileStatusArea" style="display: none;">
+                        <div class="file-info-header">
+                            <i data-lucide="file" class="file-icon"></i>
+                            <div class="file-details">
+                                <span class="file-name" id="fileName">document.hwpx</span>
+                                <span class="file-size" id="fileSize">0 KB</span>
+                            </div>
+                            <button class="remove-file-btn" id="removeFileBtn" title="파일 제거">
+                                <i data-lucide="x"></i>
+                            </button>
+                        </div>
+                        <div class="progress-bar-wrapper">
+                            <div class="progress-bar" id="progressBar"></div>
+                        </div>
+                        <p class="progress-text" id="progressStatus">파일 파싱 준비 중...</p>
+                    </div>
+                </div>
+
+                <!-- Action Controls -->
+                <div class="card actions-card disabled" id="actionsCard">
+                    <h2><i data-lucide="sliders" class="title-icon"></i>변환 및 다운로드 옵션</h2>
+                    
+                    <!-- 변환 품질 설정 (용량 줄이기) -->
+                    <div class="quality-settings">
+                        <h3><i data-lucide="settings" class="settings-icon"></i>변환 품질 및 용량 설정</h3>
+                        <div class="quality-options">
+                            <label class="quality-option">
+                                <input type="radio" name="pdfQuality" value="high" checked>
+                                <span class="option-label">고품질 원본</span>
+                            </label>
+                            <label class="quality-option">
+                                <input type="radio" name="pdfQuality" value="low">
+                                <span class="option-label">용량 최소화 (압축)</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-primary" id="exportPrintBtn" disabled>
+                            <i data-lucide="printer"></i>
+                            <div class="btn-text-wrapper">
+                                <span class="btn-title">인쇄 및 PDF 저장</span>
+                                <span class="btn-subtitle">고화질 벡터 PDF (추천)</span>
+                            </div>
+                        </button>
+                        <button class="btn btn-secondary" id="exportDownloadBtn" disabled>
+                            <i data-lucide="download"></i>
+                            <div class="btn-text-wrapper">
+                                <span class="btn-title">직접 PDF 다운로드</span>
+                                <span class="btn-subtitle">즉시 이미지 PDF 변환</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="alert-info">
+                        <i data-lucide="info" class="alert-icon"></i>
+                        <p><strong>인쇄 및 PDF 저장:</strong> 브라우저 시스템 인쇄 대화상자를 열어 'PDF로 저장'을 선택합니다. 텍스트 검색 및 드래그가 가능한 원본급 고품질 PDF가 생성됩니다.</p>
+                    </div>
+                </div>
+
+                <!-- Document Summary Card -->
+                <div class="card summary-card" id="summaryCard" style="display: none;">
+                    <h2><i data-lucide="sparkles" class="title-icon"></i>문서 요약 및 통계</h2>
+                    <div class="summary-stats">
+                        <div class="stat-item">
+                            <span class="stat-val" id="wordCount">0</span>
+                            <span class="stat-label">단어 수</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-val" id="charCount">0</span>
+                            <span class="stat-label">글자 수</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-val" id="readingTime">0분</span>
+                            <span class="stat-label">읽기 시간</span>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-content">
+                        <h3>주요 키워드</h3>
+                        <div class="keyword-tags" id="keywordTags">
+                            <!-- Tags go here -->
+                        </div>
+                        
+                        <h3>핵심 요약</h3>
+                        <blockquote class="summary-text" id="summaryText">
+                            요약 생성 중...
+                        </blockquote>
+                        <button class="btn btn-secondary btn-sm" id="copySummaryBtn">
+                            <i data-lucide="copy"></i> 요약 복사하기
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Theme Settings Card -->
+                <div class="card theme-card">
+                    <h2><i data-lucide="palette" class="title-icon"></i>화면 테마 설정</h2>
+                    <div class="theme-options">
+                        <label class="theme-option">
+                            <input type="radio" name="appTheme" value="dark" checked>
+                            <span class="theme-label"><i data-lucide="moon"></i>다크 모드</span>
+                        </label>
+                        <label class="theme-option">
+                            <input type="radio" name="appTheme" value="light">
+                            <span class="theme-label"><i data-lucide="sun"></i>라이트 모드</span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Panel: Live Interactive Preview Container -->
+            <section class="preview-panel">
+                <div class="preview-header">
+                    <div class="preview-title">
+                        <i data-lucide="eye"></i>
+                        <h2>실시간 인쇄 미리보기</h2>
+                    </div>
+                    
+                    <!-- 문서 내 검색 인터페이스 -->
+                    <div class="preview-search" id="previewSearch">
+                        <div class="search-input-wrapper">
+                            <i data-lucide="search" class="search-icon"></i>
+                            <input type="text" id="docSearchInput" placeholder="문서 내 단어 검색..." disabled>
+                            <span class="search-counter" id="searchCounter">0/0</span>
+                        </div>
+                        <div class="search-nav-buttons">
+                            <button class="search-nav-btn" id="prevMatchBtn" title="이전 찾기" disabled>
+                                <i data-lucide="chevron-left"></i>
+                            </button>
+                            <button class="search-nav-btn" id="nextMatchBtn" title="다음 찾기" disabled>
+                                <i data-lucide="chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="preview-controls">
+                        <button class="control-btn" id="rotatePageBtn" title="페이지 회전 (90도)" disabled>
+                            <i data-lucide="rotate-cw"></i>
+                        </button>
+                        <button class="control-btn" id="zoomOutBtn" title="축소" disabled>
+                            <i data-lucide="zoom-out"></i>
+                        </button>
+                        <span class="zoom-level" id="zoomLevel">100%</span>
+                        <button class="control-btn" id="zoomInBtn" title="확대" disabled>
+                            <i data-lucide="zoom-in"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="preview-scroll-area">
+                    <!-- The paper sheet layout container -->
+                    <div class="preview-canvas-placeholder" id="canvasPlaceholder">
+                        <div class="placeholder-content">
+                            <i data-lucide="file-up" class="placeholder-icon"></i>
+                            <p>변환할 HWPX 또는 DOCX 파일을 왼쪽에 업로드하면 이곳에 실시간 문서 레이아웃 미리보기가 생성됩니다.</p>
+                        </div>
+                    </div>
+                    <div class="preview-canvas" id="previewCanvas" style="display: none;">
+                        <!-- Pages will be rendered here dynamically as:
+                        <div class="paper-page"> ... content ... </div>
+                        -->
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>&copy; 2026 HWPX2PDF. All Rights Reserved. Local Client-Side Converter.</p>
+            <p class="footer-note">이 변환기는 순수 HTML5, CSS3, JavaScript 기술로 작동하며, 귀하의 문서 데이터를 절대 외부 서버와 수집 및 공유하지 않습니다.</p>
+        </footer>
+    </div>
+
+    <!-- Print Canvas Container (Hidden during screen viewing, visible only in print) -->
+    <div id="printContainer"></div>
+
+    <script src="script.js"></script>
+    <script>
+        // Initialize lucide icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>
